@@ -1,299 +1,342 @@
-<script>
-(() => {
-  const wrapEl = document.getElementById('wrap');
-  const hint = document.getElementById('hint');
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your Name | Portfolio</title>
 
-  const svg = document.getElementById('chart');
-  const line = document.getElementById('line');
-  const glow = document.getElementById('lineGlow');
-  const dots = document.getElementById('dots');
+  <!-- CSS (make sure this path is correct) -->
+  <link rel="stylesheet" href="assets/site.css">
 
-  // ---- Add a small HUD in top-left (price + time) ----
-  const hud = document.createElement('div');
-  hud.style.position = 'fixed';
-  hud.style.left = '18px';
-  hud.style.top = '18px';
-  hud.style.zIndex = '6';
-  hud.style.fontSize = '12px';
-  hud.style.color = 'rgba(255,255,255,0.72)';
-  hud.style.border = '1px solid rgba(255,255,255,0.12)';
-  hud.style.padding = '10px 12px';
-  hud.style.borderRadius = '14px';
-  hud.style.background = 'rgba(0,0,0,0.22)';
-  hud.style.backdropFilter = 'blur(10px)';
-  hud.style.userSelect = 'none';
-  hud.innerHTML = `<div style="letter-spacing:.18em; opacity:.7;">PRICE</div>
-                   <div id="hudPrice" style="font-size:16px; margin-top:4px; color:rgba(255,255,255,0.92);">$—</div>
-                   <div id="hudTime" style="margin-top:4px;">—</div>`;
-  document.body.appendChild(hud);
+  <!-- Fallback so it's never white even if CSS link breaks -->
+  <style>
+    html,body{height:100%}
+    body{margin:0;background:#070A12;color:#fff;overflow:hidden}
+    .grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.55;
+      background:
+        linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size:42px 42px;
+      mask-image: radial-gradient(circle at 50% 40%, black 0%, black 45%, transparent 75%);
+    }
+    .grid-bg::after{content:"";position:absolute;inset:0;opacity:.9;
+      background:
+        radial-gradient(900px 500px at 20% 20%, rgba(122,231,255,0.18), transparent 55%),
+        radial-gradient(800px 520px at 80% 28%, rgba(176,255,138,0.12), transparent 60%),
+        radial-gradient(900px 700px at 50% 88%, rgba(255,255,255,0.06), transparent 65%);
+    }
+    .wrap{position:fixed;inset:0;z-index:1}
+    svg#chart{position:absolute;inset:0;width:100%;height:100%}
+    .corner-hint{
+      position:fixed;top:18px;right:18px;z-index:6;font-size:12px;
+      color:rgba(255,255,255,0.65);border:1px solid rgba(255,255,255,0.12);
+      padding:8px 10px;border-radius:999px;background:rgba(0,0,0,0.22);
+      backdrop-filter: blur(10px); user-select:none;
+    }
+    /* If your node styles are in site.css these will apply; this just ensures they’re clickable */
+    .node{z-index:10}
+  </style>
+</head>
 
-  const hudPrice = document.getElementById('hudPrice');
-  const hudTime  = document.getElementById('hudTime');
+<body>
+  <div class="grid-bg" aria-hidden="true"></div>
 
-  // ---- SVG helpers for crosshair dot ----
-  const cursorGroup = document.createElementNS('http://www.w3.org/2000/svg','g');
-  const cursorDot = document.createElementNS('http://www.w3.org/2000/svg','circle');
-  cursorDot.setAttribute('r', '7');
-  cursorDot.setAttribute('fill', 'rgba(255,255,255,0.95)');
-  cursorDot.setAttribute('opacity', '0');
-  cursorDot.style.transition = 'opacity 200ms ease';
+  <div class="wrap" id="wrap">
+    <div class="corner-hint" id="hint">Loading…</div>
 
-  const cursorGlow = document.createElementNS('http://www.w3.org/2000/svg','circle');
-  cursorGlow.setAttribute('r', '16');
-  cursorGlow.setAttribute('fill', 'rgba(122,231,255,0.14)');
-  cursorGlow.setAttribute('opacity', '0');
-  cursorGlow.style.transition = 'opacity 200ms ease';
+    <svg id="chart" viewBox="0 0 1000 360" preserveAspectRatio="none" aria-label="Stock line animation">
+      <g opacity="0.10" stroke="white">
+        <path d="M0 60 H1000" /><path d="M0 120 H1000" /><path d="M0 180 H1000" />
+        <path d="M0 240 H1000" /><path d="M0 300 H1000" />
+        <path d="M125 0 V360" /><path d="M250 0 V360" /><path d="M375 0 V360" />
+        <path d="M500 0 V360" /><path d="M625 0 V360" /><path d="M750 0 V360" />
+        <path d="M875 0 V360" />
+      </g>
 
-  cursorGroup.appendChild(cursorGlow);
-  cursorGroup.appendChild(cursorDot);
-  svg.appendChild(cursorGroup);
+      <path id="lineGlow" d="" fill="none" stroke="rgba(122,231,255,0.22)" stroke-width="12" stroke-linecap="round" />
+      <path id="line" d="" fill="none" stroke="rgba(255,255,255,0.82)" stroke-width="3.8" stroke-linecap="round" />
+      <g id="dots"></g>
+    </svg>
 
-  // ---- Navigation peaks (where nodes appear) ----
-  // These are in viewBox coordinates (0-1000, 0-360)
-  const peaks = [
-    { x: 160, y: 130, nodeId: 'nodeHobbies' },
-    { x: 330, y:  95, nodeId: 'nodeExp' },
-    { x: 500, y: 115, nodeId: 'nodeAbout' },
-    { x: 670, y:  88, nodeId: 'nodeExtra' },
-    { x: 840, y: 120, nodeId: 'nodeResume' }
-  ];
+    <!-- Nodes (make sure your site.css includes .node styles) -->
+    <div class="node center-node" id="nodeAbout" data-target="about.html">
+      <div class="label"><strong>About Me</strong><span>Center of it all</span></div>
+      <div class="chip"></div>
+    </div>
 
-  // ---- Random but stable-ish seed (changes on refresh) ----
-  // If you want the SAME chart every refresh, replace with a fixed number like 12345.
-  let seed = Math.floor(Math.random() * 1e9);
-  function rand() {
-    // LCG
-    seed = (1664525 * seed + 1013904223) % 4294967296;
-    return seed / 4294967296;
-  }
+    <div class="node" id="nodeHobbies" data-target="hobbies.html">
+      <div class="label"><strong>Hobbies</strong><span>What I do off-hours</span></div>
+      <div class="chip"></div>
+    </div>
 
-  // ---- Price range (random) ----
-  // Example: base 120-220; range 10-40
-  const base = 120 + rand()*100;
-  const range = 12 + rand()*34;
-  const pMin = +(base - range).toFixed(2);
-  const pMax = +(base + range).toFixed(2);
+    <div class="node alt" id="nodeExp" data-target="experience.html">
+      <div class="label"><strong>Professional Experience</strong><span>Work + projects</span></div>
+      <div class="chip"></div>
+    </div>
 
-  // ---- Build a jagged stock series (random walk) ----
-  const N = 220; // number of points across the screen
-  const pts = [];
+    <div class="node" id="nodeExtra" data-target="extracurriculars.html">
+      <div class="label"><strong>Extracurriculars</strong><span>Leadership + service</span></div>
+      <div class="chip"></div>
+    </div>
 
-  // Map x to "minutes" from market open (9:30 to 16:00 = 390 minutes)
-  function minutesToLabel(min){
-    const startH = 9, startM = 30;
-    let total = startH*60 + startM + min;
-    let h = Math.floor(total / 60);
-    let m = total % 60;
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    let hh = h % 12; if (hh === 0) hh = 12;
-    const mm = String(m).padStart(2,'0');
-    return `${hh}:${mm} ${ampm}`;
-  }
+    <div class="node alt" id="nodeResume" data-target="resume.html">
+      <div class="label"><strong>Resume</strong><span>PDF + highlights</span></div>
+      <div class="chip"></div>
+    </div>
+  </div>
 
-  // Convert price -> y in viewBox coords
-  function priceToY(price){
-    // y=0 top, y=360 bottom
-    const t = (price - pMin) / (pMax - pMin); // 0..1
-    const y = 320 - t * 260; // keep some padding top/bottom
-    return y;
-  }
+  <!-- Jagged chart + cursor-follow dot + live HUD -->
+  <script>
+  (() => {
+    const wrapEl = document.getElementById('wrap');
+    const hint = document.getElementById('hint');
+    const svg = document.getElementById('chart');
+    const line = document.getElementById('line');
+    const glow = document.getElementById('lineGlow');
+    const dots = document.getElementById('dots');
 
-  // Force the series to pass through your "peaks" x positions (so nodes line up)
-  // Strategy: create anchors at peak x’s, generate random walk between anchors.
-  const anchors = peaks.map(p => ({
-    idx: Math.round((p.x/1000) * (N-1)),
-    y: p.y
-  }));
-
-  // Also add endpoints
-  anchors.unshift({ idx: 0, y: 230 });
-  anchors.push({ idx: N-1, y: 210 });
-
-  // Generate y values
-  const yVals = new Array(N).fill(0);
-
-  // Helper: clamp
-  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-
-  // Fill each segment between anchors with a jagged path
-  for(let s=0; s<anchors.length-1; s++){
-    const a = anchors[s];
-    const b = anchors[s+1];
-    const len = b.idx - a.idx;
-    if(len <= 0) continue;
-
-    yVals[a.idx] = a.y;
-
-    let y = a.y;
-    for(let i=1; i<=len; i++){
-      const t = i/len;
-
-      // Base interpolation toward target
-      const target = a.y + (b.y - a.y)*t;
-
-      // Jagged random walk around the target
-      const step = (rand()-0.5) * 22;   // jaggedness
-      const pull = (target - y) * 0.18; // pull toward interpolation
-      y = y + step + pull;
-
-      // Keep within visual bounds
-      y = clamp(y, 60, 320);
-
-      yVals[a.idx + i] = y;
+    // If any are missing, show a clear message instead of a blank screen
+    if(!wrapEl || !hint || !svg || !line || !glow || !dots){
+      document.body.innerHTML = '<pre style="color:white;background:#070A12;padding:20px;">Missing required element IDs. Check index.html has wrap/hint/chart/line/lineGlow/dots.</pre>';
+      return;
     }
 
-    // Force exact endpoint
-    yVals[b.idx] = b.y;
-  }
+    // HUD (top-left)
+    const hud = document.createElement('div');
+    hud.style.position = 'fixed';
+    hud.style.left = '18px';
+    hud.style.top = '18px';
+    hud.style.zIndex = '6';
+    hud.style.fontSize = '12px';
+    hud.style.color = 'rgba(255,255,255,0.72)';
+    hud.style.border = '1px solid rgba(255,255,255,0.12)';
+    hud.style.padding = '10px 12px';
+    hud.style.borderRadius = '14px';
+    hud.style.background = 'rgba(0,0,0,0.22)';
+    hud.style.backdropFilter = 'blur(10px)';
+    hud.style.userSelect = 'none';
+    hud.innerHTML = `<div style="letter-spacing:.18em; opacity:.7;">PRICE</div>
+                     <div id="hudPrice" style="font-size:16px; margin-top:4px; color:rgba(255,255,255,0.92);">$—</div>
+                     <div id="hudTime" style="margin-top:4px;">—</div>`;
+    document.body.appendChild(hud);
+    const hudPrice = document.getElementById('hudPrice');
+    const hudTime  = document.getElementById('hudTime');
 
-  // Convert y values to points with a synthetic "price" value
-  // We'll map y back to price for HUD: invert priceToY
-  function yToPrice(y){
-    const t = (320 - y) / 260;
-    const price = pMin + t*(pMax - pMin);
-    return +price.toFixed(2);
-  }
+    // Cursor dot (SVG)
+    const cursorGroup = document.createElementNS('http://www.w3.org/2000/svg','g');
+    const cursorGlow = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    const cursorDot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    cursorGlow.setAttribute('r','16');
+    cursorGlow.setAttribute('fill','rgba(122,231,255,0.14)');
+    cursorGlow.setAttribute('opacity','0');
+    cursorDot.setAttribute('r','7');
+    cursorDot.setAttribute('fill','rgba(255,255,255,0.95)');
+    cursorDot.setAttribute('opacity','0');
+    cursorGroup.appendChild(cursorGlow);
+    cursorGroup.appendChild(cursorDot);
+    svg.appendChild(cursorGroup);
 
-  for(let i=0; i<N; i++){
-    const x = (i/(N-1)) * 1000;
-    const y = yVals[i];
-    const price = yToPrice(y);
-    const minutes = Math.round((i/(N-1))*390);
-    pts.push({ x, y, price, minutes });
-  }
+    // Peaks where nodes appear
+    const peaks = [
+      { x: 160, y: 130, nodeId: 'nodeHobbies' },
+      { x: 330, y:  95, nodeId: 'nodeExp' },
+      { x: 500, y: 115, nodeId: 'nodeAbout' },
+      { x: 670, y:  88, nodeId: 'nodeExtra' },
+      { x: 840, y: 120, nodeId: 'nodeResume' }
+    ];
 
-  // ---- Build a jagged polyline-like path (straight segments) ----
-  function buildJaggedPath(offsetX){
-    let d = `M ${pts[0].x + offsetX} ${pts[0].y}`;
-    for(let i=1; i<pts.length; i++){
-      d += ` L ${pts[i].x + offsetX} ${pts[i].y}`;
+    // RNG
+    let seed = Math.floor(Math.random() * 1e9);
+    function rand(){ seed = (1664525 * seed + 1013904223) % 4294967296; return seed / 4294967296; }
+    const base = 120 + rand()*100;
+    const range = 12 + rand()*34;
+    const pMin = +(base - range).toFixed(2);
+    const pMax = +(base + range).toFixed(2);
+
+    const N = 220;
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+    function minutesToLabel(min){
+      const startH = 9, startM = 30;
+      let total = startH*60 + startM + min;
+      let h = Math.floor(total / 60);
+      let m = total % 60;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      let hh = h % 12; if (hh === 0) hh = 12;
+      const mm = String(m).padStart(2,'0');
+      return `${hh}:${mm} ${ampm}`;
     }
-    return d;
-  }
 
-  // ---- Dots at the peak points (fade-in after animation) ----
-  function setPeakDots(){
-    dots.innerHTML = '';
-    for(const p of peaks){
-      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
-      c.setAttribute('cx', p.x);
-      c.setAttribute('cy', p.y);
-      c.setAttribute('r', 6);
-      c.setAttribute('fill', 'rgba(255,255,255,0.88)');
-      c.setAttribute('opacity', '0');
-      c.style.transition = 'opacity 500ms ease';
-      dots.appendChild(c);
+    function yToPrice(y){
+      const t = (320 - y) / 260;
+      const price = pMin + t*(pMax - pMin);
+      return +price.toFixed(2);
     }
-  }
 
-  function viewBoxToPixels(x, y){
-    const r = wrapEl.getBoundingClientRect();
-    return { px: (x/1000)*r.width, py: (y/360)*r.height };
-  }
+    // Anchors force the line through your peak y positions
+    const anchors = peaks.map(p => ({ idx: Math.round((p.x/1000)*(N-1)), y: p.y }));
+    anchors.unshift({ idx: 0, y: 230 });
+    anchors.push({ idx: N-1, y: 210 });
 
-  function positionNodes(){
-    for(const p of peaks){
-      const node = document.getElementById(p.nodeId);
-      const {px, py} = viewBoxToPixels(p.x, p.y);
-      node.style.left = px + 'px';
-      node.style.top  = py + 'px';
+    const yVals = new Array(N).fill(0);
+
+    for(let s=0; s<anchors.length-1; s++){
+      const a = anchors[s];
+      const b = anchors[s+1];
+      const len = b.idx - a.idx;
+      if(len <= 0) continue;
+
+      yVals[a.idx] = a.y;
+      let y = a.y;
+
+      for(let i=1; i<=len; i++){
+        const t = i/len;
+        const target = a.y + (b.y - a.y)*t;
+
+        const step = (rand()-0.5) * 28;   // jaggedness (bigger = more jagged)
+        const pull = (target - y) * 0.20; // pull toward target
+        y = y + step + pull;
+        y = clamp(y, 60, 320);
+        yVals[a.idx + i] = y;
+      }
+      yVals[b.idx] = b.y;
     }
-  }
 
-  function showNodes(){
-    hint.textContent = 'Click a node';
-    [...dots.children].forEach((c, i) => setTimeout(()=> c.style.opacity='1', 140 + i*110));
-    for(const p of peaks){
-      const node = document.getElementById(p.nodeId);
-      setTimeout(()=> node.classList.add('show'), 420);
+    const pts = [];
+    for(let i=0; i<N; i++){
+      const x = (i/(N-1)) * 1000;
+      const y = yVals[i];
+      const price = yToPrice(y);
+      const minutes = Math.round((i/(N-1))*390);
+      pts.push({ x, y, price, minutes });
     }
-  }
 
-  // ---- Click -> navigate ----
-  document.querySelectorAll('.node').forEach(n=>{
-    n.addEventListener('click', ()=>{
-      const target = n.getAttribute('data-target');
-      if(target) window.location.href = target;
+    function buildJaggedPath(offsetX){
+      let d = `M ${pts[0].x + offsetX} ${pts[0].y}`;
+      for(let i=1; i<pts.length; i++) d += ` L ${pts[i].x + offsetX} ${pts[i].y}`;
+      return d;
+    }
+
+    function setPeakDots(){
+      dots.innerHTML = '';
+      for(const p of peaks){
+        const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        c.setAttribute('cx', p.x);
+        c.setAttribute('cy', p.y);
+        c.setAttribute('r', 6);
+        c.setAttribute('fill', 'rgba(255,255,255,0.88)');
+        c.setAttribute('opacity', '0');
+        c.style.transition = 'opacity 500ms ease';
+        dots.appendChild(c);
+      }
+    }
+
+    function viewBoxToPixels(x, y){
+      const r = wrapEl.getBoundingClientRect();
+      return { px: (x/1000)*r.width, py: (y/360)*r.height };
+    }
+
+    function positionNodes(){
+      for(const p of peaks){
+        const node = document.getElementById(p.nodeId);
+        if(!node) continue;
+        const {px, py} = viewBoxToPixels(p.x, p.y);
+        node.style.left = px + 'px';
+        node.style.top  = py + 'px';
+      }
+    }
+
+    function showNodes(){
+      hint.textContent = 'Click a node';
+      [...dots.children].forEach((c, i) => setTimeout(()=> c.style.opacity='1', 140 + i*110));
+      for(const p of peaks){
+        const node = document.getElementById(p.nodeId);
+        if(!node) continue;
+        setTimeout(()=> node.classList.add('show'), 420);
+      }
+    }
+
+    // Node navigation
+    document.querySelectorAll('.node').forEach(n=>{
+      n.addEventListener('click', ()=>{
+        const target = n.getAttribute('data-target');
+        if(target) window.location.href = target;
+      });
     });
-  });
 
-  // ---- Cursor tracking (dot follows the line + HUD updates) ----
-  let trackingEnabled = false;
+    // Cursor tracking
+    let trackingEnabled = false;
 
-  function updateCursorByClientX(clientX){
-    const rect = svg.getBoundingClientRect();
-    const xPix = clamp(clientX - rect.left, 0, rect.width);
-    const xVB = (xPix / rect.width) * 1000;
+    function updateCursorByClientX(clientX){
+      const rect = svg.getBoundingClientRect();
+      const xPix = clamp(clientX - rect.left, 0, rect.width);
+      const xVB = (xPix / rect.width) * 1000;
+      const idx = Math.round((xVB/1000) * (N-1));
+      const p = pts[clamp(idx, 0, N-1)];
 
-    // Find nearest point by x
-    const idx = Math.round((xVB/1000) * (N-1));
-    const p = pts[clamp(idx, 0, N-1)];
+      cursorDot.setAttribute('cx', p.x);
+      cursorDot.setAttribute('cy', p.y);
+      cursorGlow.setAttribute('cx', p.x);
+      cursorGlow.setAttribute('cy', p.y);
 
-    cursorDot.setAttribute('cx', p.x);
-    cursorDot.setAttribute('cy', p.y);
-    cursorGlow.setAttribute('cx', p.x);
-    cursorGlow.setAttribute('cy', p.y);
-
-    hudPrice.textContent = `$${p.price.toFixed(2)}`;
-    hudTime.textContent = minutesToLabel(p.minutes);
-  }
-
-  svg.addEventListener('mousemove', (e) => {
-    if(!trackingEnabled) return;
-    updateCursorByClientX(e.clientX);
-  });
-
-  svg.addEventListener('mouseenter', (e) => {
-    if(!trackingEnabled) return;
-    cursorDot.setAttribute('opacity', '1');
-    cursorGlow.setAttribute('opacity', '1');
-    updateCursorByClientX(e.clientX);
-  });
-
-  svg.addEventListener('mouseleave', () => {
-    cursorDot.setAttribute('opacity', '0');
-    cursorGlow.setAttribute('opacity', '0');
-  });
-
-  // ---- Animate the chart sliding in from the left ----
-  let t0 = null;
-  const duration = 1600;
-  const startOffset = -520;  // more dramatic slide-in
-  const endOffset = 0;
-
-  function tick(ts){
-    if(!t0) t0 = ts;
-    const t = ts - t0;
-    const p = Math.min(1, t/duration);
-    const ease = 1 - Math.pow(1 - p, 3); // easeOutCubic
-    const off = startOffset + (endOffset-startOffset)*ease;
-
-    const d = buildJaggedPath(off);
-    line.setAttribute('d', d);
-    glow.setAttribute('d', d);
-
-    // update HUD with the “current” end point during animation
-    const animIdx = Math.round(p * (N-1));
-    const liveP = pts[clamp(animIdx, 0, N-1)];
-    hudPrice.textContent = `$${liveP.price.toFixed(2)}`;
-    hudTime.textContent = minutesToLabel(liveP.minutes);
-
-    if(p < 1){
-      hint.textContent = 'Market line moving…';
-      requestAnimationFrame(tick);
-    } else {
-      // Lock final and enable tracking + navigation
-      setPeakDots();
-      positionNodes();
-      showNodes();
-
-      trackingEnabled = true;
-      hint.textContent = 'Move cursor on chart';
+      hudPrice.textContent = `$${p.price.toFixed(2)}`;
+      hudTime.textContent = minutesToLabel(p.minutes);
     }
-  }
 
-  window.addEventListener('resize', positionNodes);
+    svg.addEventListener('mousemove', (e) => {
+      if(!trackingEnabled) return;
+      updateCursorByClientX(e.clientX);
+    });
 
-  requestAnimationFrame(tick);
-})();
-</script>
+    svg.addEventListener('mouseenter', (e) => {
+      if(!trackingEnabled) return;
+      cursorDot.setAttribute('opacity', '1');
+      cursorGlow.setAttribute('opacity', '1');
+      updateCursorByClientX(e.clientX);
+    });
+
+    svg.addEventListener('mouseleave', () => {
+      cursorDot.setAttribute('opacity', '0');
+      cursorGlow.setAttribute('opacity', '0');
+    });
+
+    // Animate slide-in
+    let t0 = null;
+    const duration = 1600;
+    const startOffset = -520;
+    const endOffset = 0;
+
+    function tick(ts){
+      if(!t0) t0 = ts;
+      const t = ts - t0;
+      const p = Math.min(1, t/duration);
+      const ease = 1 - Math.pow(1 - p, 3);
+      const off = startOffset + (endOffset-startOffset)*ease;
+
+      const d = buildJaggedPath(off);
+      line.setAttribute('d', d);
+      glow.setAttribute('d', d);
+
+      const animIdx = Math.round(p * (N-1));
+      const liveP = pts[clamp(animIdx, 0, N-1)];
+      hudPrice.textContent = `$${liveP.price.toFixed(2)}`;
+      hudTime.textContent = minutesToLabel(liveP.minutes);
+
+      if(p < 1){
+        hint.textContent = 'Market line moving…';
+        requestAnimationFrame(tick);
+      } else {
+        setPeakDots();
+        positionNodes();
+        showNodes();
+        trackingEnabled = true;
+        hint.textContent = 'Move cursor on chart';
+      }
+    }
+
+    window.addEventListener('resize', positionNodes);
+    requestAnimationFrame(tick);
+  })();
+  </script>
+</body>
+</html>
