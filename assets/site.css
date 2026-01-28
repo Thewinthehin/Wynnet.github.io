@@ -324,3 +324,12 @@ svg#chart{
 
 /* If you kept the corner hint/HUD, these ensure they sit above everything */
 .corner-hint { z-index: 6; }
+.node .chip{
+  background: rgba(70,160,255,0.95) !important;
+  box-shadow: 0 0 0 6px rgba(70,160,255,0.12) !important;
+}
+.node.alt .chip{
+  background: rgba(70,160,255,0.95) !important;
+  box-shadow: 0 0 0 6px rgba(70,160,255,0.12) !important;
+}
+
