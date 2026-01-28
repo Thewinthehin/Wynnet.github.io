@@ -6,7 +6,7 @@
   <title>Hobbies | Your Name</title>
   <link rel="stylesheet" href="assets/site.css" />
 </head>
-<body>
+<body> <div class="grid-bg" aria-hidden="true"></div>
   <header class="topbar">
     <div class="container topbar-inner">
       <div class="brand"><strong>Your Name</strong><span>Economics • Portfolio</span></div>
