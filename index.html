@@ -1,473 +1,438 @@
-<script>
-(() => {
-  const wrapEl = document.getElementById('wrap');
-  const hint = document.getElementById('hint');
-  const svg  = document.getElementById('chart');
-  const line = document.getElementById('line');
-  const glow = document.getElementById('lineGlow');
-  const dots = document.getElementById('dots');
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portfolio | TradingView Style</title>
 
-  // Safety: if IDs don't exist, don't fail silently
-  if(!wrapEl || !hint || !svg || !line || !glow || !dots){
+  <!-- Keep this (if it loads, great) -->
+  <link rel="stylesheet" href="assets/site.css">
+
+  <!-- HARD fallback so it can never be white -->
+  <style>
+    html,body{height:100%}
+    body{margin:0;background:#070A12;color:#fff;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    .grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.55;
+      background:
+        linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size:42px 42px;
+      mask-image: radial-gradient(circle at 50% 40%, black 0%, black 45%, transparent 75%);
+    }
+    .grid-bg::after{content:"";position:absolute;inset:0;opacity:.9;
+      background:
+        radial-gradient(900px 500px at 20% 20%, rgba(122,231,255,0.18), transparent 55%),
+        radial-gradient(800px 520px at 80% 28%, rgba(176,255,138,0.12), transparent 60%),
+        radial-gradient(900px 700px at 50% 88%, rgba(255,255,255,0.06), transparent 65%);
+    }
+
+    .wrap{position:fixed;inset:0;z-index:1}
+    svg#chart{position:absolute;inset:0;width:100%;height:100%}
+
+    .hud{
+      position:fixed;left:16px;top:14px;z-index:6;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(0,0,0,0.22);backdrop-filter:blur(10px);
+      border-radius:14px;padding:10px 12px;user-select:none;
+      min-width:160px;
+    }
+    .hud .k{letter-spacing:.18em;opacity:.7;font-size:11px}
+    .hud .p{font-size:16px;margin-top:4px;color:rgba(255,255,255,0.92)}
+    .hud .t{margin-top:4px;font-size:12px;color:rgba(255,255,255,0.72)}
+
+    .hint{
+      position:fixed;right:16px;top:16px;z-index:6;
+      font-size:12px;color:rgba(255,255,255,0.65);
+      border:1px solid rgba(255,255,255,0.12);
+      padding:8px 10px;border-radius:999px;
+      background:rgba(0,0,0,0.22);backdrop-filter:blur(10px);
+      user-select:none;
+    }
+
+    /* Minimal node styling fallback (in case site.css isn't applying) */
+    .node{
+      position:absolute;transform:translate(-50%,-50%) scale(.92);
+      opacity:0;pointer-events:none;transition:transform 420ms ease,opacity 420ms ease,filter 420ms ease;
+      border-radius:999px;padding:10px 12px;
+      background:rgba(255,255,255,0.07);
+      border:1px solid rgba(255,255,255,0.16);
+      box-shadow:0 14px 40px rgba(0,0,0,0.55);
+      backdrop-filter:blur(10px);
+      display:flex;align-items:center;gap:10px;min-width:170px;justify-content:space-between;
+      z-index:10;
+    }
+    .node .label{display:flex;flex-direction:column;gap:2px}
+    .node .label strong{font-size:13px}
+    .node .label span{font-size:11px;color:rgba(255,255,255,0.65)}
+    .node .chip{width:9px;height:9px;border-radius:999px;background:rgba(70,160,255,0.95);box-shadow:0 0 0 6px rgba(70,160,255,0.12)}
+    .node.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+    .node:hover{filter:brightness(1.12);transform:translate(-50%,-50%) scale(1.04);cursor:pointer}
+    .center-node{min-width:220px;background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.22)}
+
+    /* Make SVG feel like a chart */
+    #chart{cursor:crosshair}
+  </style>
+</head>
+
+<body>
+  <div class="grid-bg" aria-hidden="true"></div>
+
+  <div class="wrap" id="wrap">
+    <div class="hud" id="hud">
+      <div class="k">PRICE</div>
+      <div class="p" id="hudPrice">$—</div>
+      <div class="t" id="hudTime">—</div>
+    </div>
+    <div class="hint" id="hint">Loading…</div>
+
+    <svg id="chart" viewBox="0 0 1000 360" preserveAspectRatio="none">
+      <path id="lineGlow" d="" fill="none" stroke="rgba(70,160,255,0.20)" stroke-width="8" stroke-linecap="round"/>
+      <path id="line" d="" fill="none" stroke="rgba(70,160,255,0.95)" stroke-width="2.2" stroke-linecap="round"/>
+      <g id="dots"></g>
+    </svg>
+
+    <!-- Nodes -->
+    <div class="node center-node" id="nodeAbout" data-target="about.html">
+      <div class="label"><strong>About Me</strong><span>Center of it all</span></div><div class="chip"></div>
+    </div>
+    <div class="node" id="nodeHobbies" data-target="hobbies.html">
+      <div class="label"><strong>Hobbies</strong><span>Off-hours</span></div><div class="chip"></div>
+    </div>
+    <div class="node" id="nodeExp" data-target="experience.html">
+      <div class="label"><strong>Experience</strong><span>Work + projects</span></div><div class="chip"></div>
+    </div>
+    <div class="node" id="nodeExtra" data-target="extracurriculars.html">
+      <div class="label"><strong>Extracurriculars</strong><span>Leadership</span></div><div class="chip"></div>
+    </div>
+    <div class="node" id="nodeResume" data-target="resume.html">
+      <div class="label"><strong>Resume</strong><span>PDF</span></div><div class="chip"></div>
+    </div>
+  </div>
+
+  <script>
+  // Show JS errors ON the page (so you never get "white screen" mystery)
+  window.addEventListener('error', (e) => {
     document.body.innerHTML =
-      '<pre style="color:white;background:#070A12;padding:20px;">Missing required element IDs (wrap/hint/chart/line/lineGlow/dots).</pre>';
-    return;
-  }
-
-  // === Styling from JS so you don't have to chase CSS ===
-  // Thinner blue line + subtle glow
-  line.setAttribute('stroke', 'rgba(70,160,255,0.95)');
-  line.setAttribute('stroke-width', '2.2');
-  glow.setAttribute('stroke', 'rgba(70,160,255,0.20)');
-  glow.setAttribute('stroke-width', '8');
-
-  // ViewBox constants
-  const VB_W = 1000;
-  const VB_H = 360;
-
-  // Chart plot area (leave room for axes labels)
-  const PAD_L = 78;   // y-axis labels
-  const PAD_R = 24;
-  const PAD_T = 26;
-  const PAD_B = 52;   // x-axis labels
-  const PLOT_W = VB_W - PAD_L - PAD_R;
-  const PLOT_H = VB_H - PAD_T - PAD_B;
-
-  // Where the x/y axes lines sit
-  const AXIS_X0 = PAD_L;
-  const AXIS_X1 = VB_W - PAD_R;
-  const AXIS_Y0 = VB_H - PAD_B;
-  const AXIS_Y1 = PAD_T;
-
-  // Navigation peak x positions (place nodes here)
-  const peaks = [
-    { x: 160, nodeId: 'nodeHobbies' },
-    { x: 330, nodeId: 'nodeExp' },
-    { x: 500, nodeId: 'nodeAbout' },
-    { x: 670, nodeId: 'nodeExtra' },
-    { x: 840, nodeId: 'nodeResume' }
-  ];
-
-  // RNG (stable per refresh)
-  let seed = Math.floor(Math.random() * 1e9);
-  function rand(){
-    seed = (1664525 * seed + 1013904223) % 4294967296;
-    return seed / 4294967296;
-  }
-
-  // ===== Price range (Y axis) =====
-  // Make it look like a realistic ticker range.
-  const base  = 40 + rand()*180;         // $40 - $220
-  const range = 10 + rand()*45;          // span $10 - $55
-  let pMin = base - range;
-  let pMax = base + range;
-
-  // Snap to nice round increments
-  function niceStep(span){
-    // returns something like 0.5, 1, 2, 5, 10, 20, 50
-    const pow = Math.pow(10, Math.floor(Math.log10(span)));
-    const n = span / pow;
-    if(n < 1.5) return 0.2*pow;
-    if(n < 3)   return 0.5*pow;
-    if(n < 7)   return 1*pow;
-    if(n < 15)  return 2*pow;
-    if(n < 30)  return 5*pow;
-    return 10*pow;
-  }
-
-  const span = pMax - pMin;
-  const step = niceStep(span / 6);
-  pMin = Math.floor(pMin / step) * step;
-  pMax = Math.ceil(pMax / step) * step;
-
-  // Convert price <-> y in plot coordinates
-  function priceToY(price){
-    const t = (price - pMin) / (pMax - pMin);
-    return (AXIS_Y0 - t * PLOT_H);
-  }
-  function yToPrice(y){
-    const t = (AXIS_Y0 - y) / PLOT_H;
-    return pMin + t * (pMax - pMin);
-  }
-
-  // ===== Time axis (X) =====
-  // Market hours: 9:30 AM -> 4:00 PM (390 minutes)
-  function minutesToLabel(min){
-    const startH = 9, startM = 30;
-    const total = startH*60 + startM + min;
-    let h = Math.floor(total / 60);
-    let m = total % 60;
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    let hh = h % 12; if(hh === 0) hh = 12;
-    return `${hh}:${String(m).padStart(2,'0')} ${ampm}`;
-  }
-
-  // ===== Build axes + grid labels in SVG =====
-  const NS = 'http://www.w3.org/2000/svg';
-
-  // Clear any previous axis groups if you hot-reload
-  function removeIfExists(id){
-    const el = document.getElementById(id);
-    if(el && el.parentNode) el.parentNode.removeChild(el);
-  }
-  removeIfExists('axisLayer');
-
-  const axisLayer = document.createElementNS(NS,'g');
-  axisLayer.setAttribute('id','axisLayer');
-  axisLayer.setAttribute('opacity','0.95');
-  svg.appendChild(axisLayer);
-
-  // Axis lines
-  const axisStroke = 'rgba(255,255,255,0.18)';
-
-  function addLine(x1,y1,x2,y2, stroke, width, dash){
-    const l = document.createElementNS(NS,'line');
-    l.setAttribute('x1', x1); l.setAttribute('y1', y1);
-    l.setAttribute('x2', x2); l.setAttribute('y2', y2);
-    l.setAttribute('stroke', stroke);
-    l.setAttribute('stroke-width', width);
-    if(dash) l.setAttribute('stroke-dasharray', dash);
-    axisLayer.appendChild(l);
-    return l;
-  }
-
-  addLine(AXIS_X0, AXIS_Y0, AXIS_X1, AXIS_Y0, axisStroke, 1.2); // x-axis
-  addLine(AXIS_X0, AXIS_Y0, AXIS_X0, AXIS_Y1, axisStroke, 1.2); // y-axis
-
-  // Tick/label helpers
-  function addText(x,y,text, anchor='middle'){
-    const t = document.createElementNS(NS,'text');
-    t.setAttribute('x', x);
-    t.setAttribute('y', y);
-    t.setAttribute('fill', 'rgba(255,255,255,0.55)');
-    t.setAttribute('font-size', '11');
-    t.setAttribute('font-family', 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial');
-    t.setAttribute('text-anchor', anchor);
-    t.setAttribute('dominant-baseline', 'middle');
-    t.textContent = text;
-    axisLayer.appendChild(t);
-    return t;
-  }
-
-  // X ticks: 9:30, 11:00, 12:30, 2:00, 3:30, 4:00 (nice spacing)
-  const xTickMinutes = [0, 90, 180, 270, 360, 390];
-  xTickMinutes.forEach(min => {
-    const x = AXIS_X0 + (min/390)*PLOT_W;
-    // small tick
-    addLine(x, AXIS_Y0, x, AXIS_Y0+6, 'rgba(255,255,255,0.22)', 1);
-    // faint vertical grid line
-    addLine(x, AXIS_Y0, x, AXIS_Y1, 'rgba(255,255,255,0.06)', 1);
-    // label
-    addText(x, AXIS_Y0+18, minutesToLabel(min), 'middle');
+      '<pre style="white-space:pre-wrap;background:#070A12;color:#ffb4b4;padding:18px;font-size:13px;">' +
+      'JavaScript error:\\n' + (e.message || e.error) + '\\n\\n' +
+      (e.filename ? ('File: ' + e.filename + '\\nLine: ' + e.lineno + ':' + e.colno + '\\n\\n') : '') +
+      'Fix: paste this error back to ChatGPT and I’ll patch it instantly.' +
+      '</pre>';
   });
 
-  // Y ticks: use pMin..pMax by step (up to ~7 ticks)
-  const yTicks = [];
-  for(let p = pMin; p <= pMax + 1e-9; p += step){
-    yTicks.push(+p.toFixed(2));
-  }
+  (() => {
+    const wrapEl = document.getElementById('wrap');
+    const hint = document.getElementById('hint');
+    const svg  = document.getElementById('chart');
+    const line = document.getElementById('line');
+    const glow = document.getElementById('lineGlow');
+    const dots = document.getElementById('dots');
+    const hudPrice = document.getElementById('hudPrice');
+    const hudTime  = document.getElementById('hudTime');
 
-  yTicks.forEach(p => {
-    const y = priceToY(p);
-    // tick
-    addLine(AXIS_X0-6, y, AXIS_X0, y, 'rgba(255,255,255,0.22)', 1);
-    // faint horizontal grid line
-    addLine(AXIS_X0, y, AXIS_X1, y, 'rgba(255,255,255,0.06)', 1);
-    // label
-    addText(AXIS_X0-10, y, `$${p.toFixed(2)}`, 'end');
-  });
+    const NS='http://www.w3.org/2000/svg';
+    const VB_W=1000, VB_H=360;
 
-  // ===== Build the stock line (jagged) within plot area =====
-  const N = 260; // more points = smoother cursor tracking
-  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    // Plot area padding (axes)
+    const PAD_L=78, PAD_R=24, PAD_T=26, PAD_B=52;
+    const AXIS_X0=PAD_L, AXIS_X1=VB_W-PAD_R;
+    const AXIS_Y0=VB_H-PAD_B, AXIS_Y1=PAD_T;
+    const PLOT_W=AXIS_X1-AXIS_X0, PLOT_H=AXIS_Y0-AXIS_Y1;
 
-  // Map index -> x in plot coords
-  function idxToX(i){
-    return AXIS_X0 + (i/(N-1))*PLOT_W;
-  }
+    const peaks = [
+      { x: 160, nodeId: 'nodeHobbies' },
+      { x: 330, nodeId: 'nodeExp' },
+      { x: 500, nodeId: 'nodeAbout' },
+      { x: 670, nodeId: 'nodeExtra' },
+      { x: 840, nodeId: 'nodeResume' }
+    ];
 
-  // Create y values in plot coords. We’ll do a random walk in PRICE space.
-  // Then convert to y.
+    // RNG
+    let seed = Math.floor(Math.random()*1e9);
+    const rand = () => (seed = (1664525*seed + 1013904223) % 4294967296) / 4294967296;
 
-  // First: define anchor indices for the peaks (so nodes have distinct peaks)
-  const peakAnchors = peaks.map(pk => ({
-    idx: Math.round(((pk.x - AXIS_X0) / PLOT_W) * (N-1))
-  })).map(a => ({...a, idx: clamp(a.idx, 0, N-1)}));
-
-  // Enforce distinct peaks: give them a high/low pattern around each anchor
-  // We'll set a target price at each peak that is clearly a local max.
-  const peakTargets = peakAnchors.map((a, k) => {
-    // pick a high point: 70%-92% up the range
-    const t = 0.70 + rand()*0.22;
-    const price = pMin + t*(pMax - pMin);
-    return { idx: a.idx, price };
-  });
-
-  // Start price around middle
-  let price = pMin + (0.45 + rand()*0.10)*(pMax - pMin);
-
-  const prices = new Array(N).fill(0);
-
-  // We'll “pull” toward peak targets as we approach them, creating sharp peaks.
-  function nearestPeakTarget(i){
-    let best = null;
-    let bestDist = 1e9;
-    for(const pt of peakTargets){
-      const d = Math.abs(pt.idx - i);
-      if(d < bestDist){
-        bestDist = d;
-        best = pt;
-      }
-    }
-    return { pt: best, dist: bestDist };
-  }
-
-  for(let i=0; i<N; i++){
-    // base jagged step (random walk)
-    const stepSize = (rand()-0.5) * (pMax - pMin) * 0.018; // jaggedness
-    price += stepSize;
-
-    // pull toward nearest peak target when within window
-    const {pt, dist} = nearestPeakTarget(i);
-    if(pt){
-      const window = 16; // how tight the peak forms
-      if(dist <= window){
-        // stronger pull near the peak
-        const strength = (1 - dist/window);
-        price += (pt.price - price) * (0.32 * strength);
-      }
+    // Nice tick helper
+    function niceStep(span){
+      const pow = Math.pow(10, Math.floor(Math.log10(span)));
+      const n = span / pow;
+      if(n < 1.5) return 0.2*pow;
+      if(n < 3)   return 0.5*pow;
+      if(n < 7)   return 1*pow;
+      if(n < 15)  return 2*pow;
+      if(n < 30)  return 5*pow;
+      return 10*pow;
     }
 
-    // Keep within range
-    price = clamp(price, pMin, pMax);
-    prices[i] = price;
-  }
+    // Price range
+    const base = 40 + rand()*180;
+    const range = 10 + rand()*45;
+    let pMin = base - range;
+    let pMax = base + range;
+    const step = niceStep((pMax - pMin) / 6);
+    pMin = Math.floor(pMin/step)*step;
+    pMax = Math.ceil(pMax/step)*step;
 
-  // Force the peak indices to be true local maxima (more distinct)
-  for(const pt of peakTargets){
-    const i = pt.idx;
-    prices[i] = pt.price;
-    if(i-1 >= 0) prices[i-1] = Math.min(prices[i-1], pt.price - step*0.35);
-    if(i+1 < N)  prices[i+1] = Math.min(prices[i+1], pt.price - step*0.35);
-  }
+    const clamp = (v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+    const priceToY = (price)=> AXIS_Y0 - ((price - pMin)/(pMax - pMin))*PLOT_H;
 
-  // Convert to y coords
-  const pts = [];
-  for(let i=0; i<N; i++){
-    const x = idxToX(i);
-    const y = priceToY(prices[i]);
-    const minutes = Math.round((i/(N-1))*390);
-    pts.push({x, y, price: prices[i], minutes});
-  }
+    // Time labels
+    const minutesToLabel = (min)=>{
+      const total = (9*60+30) + min;
+      let h = Math.floor(total/60), m = total%60;
+      const ampm = h>=12?'PM':'AM';
+      let hh = h%12; if(hh===0) hh=12;
+      return `${hh}:${String(m).padStart(2,'0')} ${ampm}`;
+    };
 
-  // Build polyline path (sharp/jagged like real stock chart)
-  function buildPath(offsetX){
-    let d = `M ${pts[0].x + offsetX} ${pts[0].y}`;
-    for(let i=1; i<pts.length; i++){
-      d += ` L ${pts[i].x + offsetX} ${pts[i].y}`;
-    }
-    return d;
-  }
+    // Build axis layer
+    const oldAxis = document.getElementById('axisLayer');
+    if(oldAxis) oldAxis.remove();
+    const axisLayer = document.createElementNS(NS,'g');
+    axisLayer.setAttribute('id','axisLayer');
+    svg.appendChild(axisLayer);
 
-  // ===== Crosshair dashed lines + cursor dot (blue) =====
-  // Remove old cursor layer if exists
-  removeIfExists('cursorLayer');
-  const cursorLayer = document.createElementNS(NS,'g');
-  cursorLayer.setAttribute('id','cursorLayer');
-  svg.appendChild(cursorLayer);
+    const axisStroke='rgba(255,255,255,0.18)';
+    const gridStroke='rgba(255,255,255,0.06)';
 
-  const crossStroke = 'rgba(200,200,200,0.22)';
-  const dash = '4 6';
+    const addLine = (x1,y1,x2,y2,stroke,w,dash)=>{
+      const l=document.createElementNS(NS,'line');
+      l.setAttribute('x1',x1);l.setAttribute('y1',y1);
+      l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+      l.setAttribute('stroke',stroke);l.setAttribute('stroke-width',w);
+      if(dash) l.setAttribute('stroke-dasharray',dash);
+      axisLayer.appendChild(l);
+      return l;
+    };
 
-  const vLine = addLine(AXIS_X0, AXIS_Y0, AXIS_X0, AXIS_Y1, crossStroke, 1, dash);
-  const hLine = addLine(AXIS_X0, AXIS_Y0, AXIS_X1, AXIS_Y0, crossStroke, 1, dash);
+    const addText = (x,y,txt,anchor='middle')=>{
+      const t=document.createElementNS(NS,'text');
+      t.setAttribute('x',x);t.setAttribute('y',y);
+      t.setAttribute('fill','rgba(255,255,255,0.55)');
+      t.setAttribute('font-size','11');
+      t.setAttribute('font-family','system-ui,-apple-system,Segoe UI,Roboto,Arial');
+      t.setAttribute('text-anchor',anchor);
+      t.setAttribute('dominant-baseline','middle');
+      t.textContent=txt;
+      axisLayer.appendChild(t);
+      return t;
+    };
 
-  // Put crosshair lines on cursorLayer (above axes grid lines)
-  cursorLayer.appendChild(vLine);
-  cursorLayer.appendChild(hLine);
+    // Axes
+    addLine(AXIS_X0,AXIS_Y0,AXIS_X1,AXIS_Y0,axisStroke,1.2);
+    addLine(AXIS_X0,AXIS_Y0,AXIS_X0,AXIS_Y1,axisStroke,1.2);
 
-  vLine.setAttribute('opacity','0');
-  hLine.setAttribute('opacity','0');
-
-  const cursorDot = document.createElementNS(NS,'circle');
-  cursorDot.setAttribute('r','4.2');
-  cursorDot.setAttribute('fill','rgba(70,160,255,0.95)');
-  cursorDot.setAttribute('opacity','0');
-  cursorLayer.appendChild(cursorDot);
-
-  // ===== HUD top-left (sync with axis) =====
-  // Create HUD if not already
-  let hud = document.getElementById('hud');
-  if(!hud){
-    hud = document.createElement('div');
-    hud.id = 'hud';
-    hud.style.position = 'fixed';
-    hud.style.left = '18px';
-    hud.style.top = '18px';
-    hud.style.zIndex = '6';
-    hud.style.fontSize = '12px';
-    hud.style.color = 'rgba(255,255,255,0.72)';
-    hud.style.border = '1px solid rgba(255,255,255,0.12)';
-    hud.style.padding = '10px 12px';
-    hud.style.borderRadius = '14px';
-    hud.style.background = 'rgba(0,0,0,0.22)';
-    hud.style.backdropFilter = 'blur(10px)';
-    hud.style.userSelect = 'none';
-    hud.innerHTML = `
-      <div style="letter-spacing:.18em; opacity:.7;">PRICE</div>
-      <div id="hudPrice" style="font-size:16px; margin-top:4px; color:rgba(255,255,255,0.92);">$—</div>
-      <div id="hudTime" style="margin-top:4px;">—</div>
-    `;
-    document.body.appendChild(hud);
-  }
-  const hudPrice = document.getElementById('hudPrice');
-  const hudTime  = document.getElementById('hudTime');
-
-  // ===== Peak dots for node reveal =====
-  function setPeakDots(){
-    dots.innerHTML = '';
-    for(const pk of peaks){
-      // find nearest point to pk.x
-      const idx = Math.round(((pk.x - AXIS_X0)/PLOT_W) * (N-1));
-      const p = pts[clamp(idx,0,N-1)];
-      const c = document.createElementNS(NS,'circle');
-      c.setAttribute('cx', p.x);
-      c.setAttribute('cy', p.y);
-      c.setAttribute('r', 5.2);
-      c.setAttribute('fill', 'rgba(70,160,255,0.95)');
-      c.setAttribute('opacity', '0');
-      c.style.transition = 'opacity 520ms ease';
-      dots.appendChild(c);
-      // store y for node positioning
-      pk._y = p.y;
-      pk._x = p.x;
-    }
-  }
-
-  function viewBoxToPixels(x, y){
-    const r = svg.getBoundingClientRect();
-    return { px: (x/VB_W)*r.width, py: (y/VB_H)*r.height };
-  }
-
-  function positionNodes(){
-    for(const pk of peaks){
-      const node = document.getElementById(pk.nodeId);
-      if(!node) continue;
-      const {px, py} = viewBoxToPixels(pk._x ?? pk.x, pk._y ?? 150);
-      node.style.left = px + 'px';
-      node.style.top  = py + 'px';
-    }
-  }
-
-  function showNodes(){
-    hint.textContent = 'Click a peak';
-    [...dots.children].forEach((c, i) => setTimeout(()=> c.setAttribute('opacity','1'), 120 + i*120));
-    for(const pk of peaks){
-      const node = document.getElementById(pk.nodeId);
-      if(!node) continue;
-      setTimeout(()=> node.classList.add('show'), 420);
-    }
-  }
-
-  // Node navigation
-  document.querySelectorAll('.node').forEach(n=>{
-    n.addEventListener('click', ()=>{
-      const target = n.getAttribute('data-target');
-      if(target) window.location.href = target;
+    // X ticks/grid
+    [0,90,180,270,360,390].forEach(min=>{
+      const x=AXIS_X0 + (min/390)*PLOT_W;
+      addLine(x,AXIS_Y0,x,AXIS_Y0+6,'rgba(255,255,255,0.22)',1);
+      addLine(x,AXIS_Y0,x,AXIS_Y1,gridStroke,1);
+      addText(x,AXIS_Y0+18,minutesToLabel(min),'middle');
     });
-  });
 
-  // ===== Cursor tracking =====
-  let trackingEnabled = false;
-
-  function updateCursorByClientX(clientX){
-    const rect = svg.getBoundingClientRect();
-    const xPix = clamp(clientX - rect.left, 0, rect.width);
-    const xVB  = (xPix / rect.width) * VB_W;
-
-    // Convert xVB to nearest point index (within plot region)
-    const t = clamp((xVB - AXIS_X0) / PLOT_W, 0, 1);
-    const idx = Math.round(t * (N-1));
-    const p = pts[clamp(idx, 0, N-1)];
-
-    // Dot
-    cursorDot.setAttribute('cx', p.x);
-    cursorDot.setAttribute('cy', p.y);
-
-    // Crosshair lines:
-    // vertical: from x-axis (bottom) to cursor
-    vLine.setAttribute('x1', p.x);
-    vLine.setAttribute('x2', p.x);
-    vLine.setAttribute('y1', AXIS_Y0);
-    vLine.setAttribute('y2', p.y);
-
-    // horizontal: from y-axis (left) to cursor
-    hLine.setAttribute('x1', AXIS_X0);
-    hLine.setAttribute('x2', p.x);
-    hLine.setAttribute('y1', p.y);
-    hLine.setAttribute('y2', p.y);
-
-    // HUD synced to axis
-    hudPrice.textContent = `$${p.price.toFixed(2)}`;
-    hudTime.textContent  = minutesToLabel(p.minutes);
-  }
-
-  svg.addEventListener('mousemove', (e) => {
-    if(!trackingEnabled) return;
-    updateCursorByClientX(e.clientX);
-  });
-  svg.addEventListener('mouseenter', (e) => {
-    if(!trackingEnabled) return;
-    cursorDot.setAttribute('opacity','1');
-    vLine.setAttribute('opacity','1');
-    hLine.setAttribute('opacity','1');
-    updateCursorByClientX(e.clientX);
-  });
-  svg.addEventListener('mouseleave', () => {
-    cursorDot.setAttribute('opacity','0');
-    vLine.setAttribute('opacity','0');
-    hLine.setAttribute('opacity','0');
-  });
-
-  // ===== Animate the chart sliding in (left->right) =====
-  let t0 = null;
-  const duration = 1600;
-  const startOffset = -540;
-  const endOffset = 0;
-
-  function tick(ts){
-    if(!t0) t0 = ts;
-    const t = ts - t0;
-    const p = Math.min(1, t/duration);
-    const ease = 1 - Math.pow(1 - p, 3);
-    const off = startOffset + (endOffset-startOffset)*ease;
-
-    const d = buildPath(off);
-    line.setAttribute('d', d);
-    glow.setAttribute('d', d);
-
-    // Live HUD during animation uses last visible point
-    const animIdx = Math.round(p * (N-1));
-    const live = pts[clamp(animIdx,0,N-1)];
-    hudPrice.textContent = `$${live.price.toFixed(2)}`;
-    hudTime.textContent  = minutesToLabel(live.minutes);
-
-    if(p < 1){
-      hint.textContent = 'Market line moving…';
-      requestAnimationFrame(tick);
-    } else {
-      // Lock final, place nodes on clear peaks
-      setPeakDots();
-      positionNodes();
-      showNodes();
-
-      trackingEnabled = true;
-      hint.textContent = 'Move cursor on chart';
+    // Y ticks/grid
+    for(let p=pMin; p<=pMax+1e-9; p+=step){
+      const y=priceToY(p);
+      addLine(AXIS_X0-6,y,AXIS_X0,y,'rgba(255,255,255,0.22)',1);
+      addLine(AXIS_X0,y,AXIS_X1,y,gridStroke,1);
+      addText(AXIS_X0-10,y,`$${p.toFixed(2)}`,'end');
     }
-  }
 
-  window.addEventListener('resize', positionNodes);
+    // Cursor crosshair layer
+    const oldCursor=document.getElementById('cursorLayer');
+    if(oldCursor) oldCursor.remove();
+    const cursorLayer=document.createElementNS(NS,'g');
+    cursorLayer.setAttribute('id','cursorLayer');
+    svg.appendChild(cursorLayer);
 
-  requestAnimationFrame(tick);
-})();
-</script>
+    const vLine=addLine(AXIS_X0,AXIS_Y0,AXIS_X0,AXIS_Y1,'rgba(200,200,200,0.22)',1,'4 6');
+    const hLine=addLine(AXIS_X0,AXIS_Y0,AXIS_X1,AXIS_Y0,'rgba(200,200,200,0.22)',1,'4 6');
+    cursorLayer.appendChild(vLine); cursorLayer.appendChild(hLine);
+    vLine.setAttribute('opacity','0'); hLine.setAttribute('opacity','0');
+
+    const cursorDot=document.createElementNS(NS,'circle');
+    cursorDot.setAttribute('r','4.2');
+    cursorDot.setAttribute('fill','rgba(70,160,255,0.95)');
+    cursorDot.setAttribute('opacity','0');
+    cursorLayer.appendChild(cursorDot);
+
+    // Build jagged prices with distinct peaks at nodes
+    const N=260;
+    const idxToX=i=>AXIS_X0 + (i/(N-1))*PLOT_W;
+
+    const peakIdx = peaks.map(pk => ({
+      ...pk,
+      idx: clamp(Math.round(((pk.x-AXIS_X0)/PLOT_W)*(N-1)),0,N-1)
+    }));
+
+    // Targets for distinct peaks (high)
+    const peakTargets = peakIdx.map(p=>({
+      idx:p.idx,
+      price: pMin + (0.74 + rand()*0.18)*(pMax-pMin)
+    }));
+
+    let price = pMin + (0.45 + rand()*0.10)*(pMax-pMin);
+    const prices=new Array(N).fill(0);
+
+    function nearestPeak(i){
+      let best=null, bestD=1e9;
+      for(const pt of peakTargets){
+        const d=Math.abs(pt.idx-i);
+        if(d<bestD){bestD=d;best=pt;}
+      }
+      return {pt:best, d:bestD};
+    }
+
+    for(let i=0;i<N;i++){
+      const stepSize=(rand()-0.5)*(pMax-pMin)*0.018;
+      price += stepSize;
+
+      const {pt,d}=nearestPeak(i);
+      const window=16;
+      if(pt && d<=window){
+        const strength=1-(d/window);
+        price += (pt.price-price)*(0.32*strength);
+      }
+
+      price=clamp(price,pMin,pMax);
+      prices[i]=price;
+    }
+
+    // Force local maxima at peak points so nodes sit on *real* peaks
+    for(const pt of peakTargets){
+      const i=pt.idx;
+      prices[i]=pt.price;
+      if(i-1>=0) prices[i-1]=Math.min(prices[i-1],pt.price-step*0.35);
+      if(i+1<N)  prices[i+1]=Math.min(prices[i+1],pt.price-step*0.35);
+    }
+
+    const pts=[];
+    for(let i=0;i<N;i++){
+      const x=idxToX(i);
+      const y=priceToY(prices[i]);
+      const minutes=Math.round((i/(N-1))*390);
+      pts.push({x,y,price:prices[i],minutes});
+    }
+
+    const buildPath=(off)=>{
+      let d=`M ${pts[0].x+off} ${pts[0].y}`;
+      for(let i=1;i<pts.length;i++) d += ` L ${pts[i].x+off} ${pts[i].y}`;
+      return d;
+    };
+
+    // Peak dots + node positioning
+    const setPeakDots=()=>{
+      dots.innerHTML='';
+      peakIdx.forEach((pk,i)=>{
+        const p=pts[pk.idx];
+        pk._x=p.x; pk._y=p.y;
+        const c=document.createElementNS(NS,'circle');
+        c.setAttribute('cx',p.x); c.setAttribute('cy',p.y);
+        c.setAttribute('r','5.2');
+        c.setAttribute('fill','rgba(70,160,255,0.95)');
+        c.setAttribute('opacity','0');
+        c.style.transition='opacity 520ms ease';
+        dots.appendChild(c);
+      });
+    };
+
+    const viewBoxToPixels=(x,y)=>{
+      const r=svg.getBoundingClientRect();
+      return {px:(x/VB_W)*r.width, py:(y/VB_H)*r.height};
+    };
+
+    const positionNodes=()=>{
+      peakIdx.forEach(pk=>{
+        const el=document.getElementById(pk.nodeId);
+        if(!el) return;
+        const {px,py}=viewBoxToPixels(pk._x,pk._y);
+        el.style.left=px+'px';
+        el.style.top=py+'px';
+      });
+    };
+
+    const showNodes=()=>{
+      hint.textContent='Click a peak';
+      [...dots.children].forEach((c,i)=>setTimeout(()=>c.setAttribute('opacity','1'),120+i*120));
+      peakIdx.forEach(pk=>{
+        const el=document.getElementById(pk.nodeId);
+        if(el) setTimeout(()=>el.classList.add('show'),420);
+      });
+    };
+
+    document.querySelectorAll('.node').forEach(n=>{
+      n.addEventListener('click',()=>{ const t=n.getAttribute('data-target'); if(t) location.href=t; });
+    });
+
+    // Cursor tracking
+    let tracking=false;
+    function updateCursor(clientX){
+      const rect=svg.getBoundingClientRect();
+      const xPix=clamp(clientX-rect.left,0,rect.width);
+      const xVB=(xPix/rect.width)*VB_W;
+      const t=clamp((xVB-AXIS_X0)/PLOT_W,0,1);
+      const idx=Math.round(t*(N-1));
+      const p=pts[clamp(idx,0,N-1)];
+
+      cursorDot.setAttribute('cx',p.x);
+      cursorDot.setAttribute('cy',p.y);
+
+      vLine.setAttribute('x1',p.x); vLine.setAttribute('x2',p.x);
+      vLine.setAttribute('y1',AXIS_Y0); vLine.setAttribute('y2',p.y);
+
+      hLine.setAttribute('x1',AXIS_X0); hLine.setAttribute('x2',p.x);
+      hLine.setAttribute('y1',p.y); hLine.setAttribute('y2',p.y);
+
+      hudPrice.textContent=`$${p.price.toFixed(2)}`;
+      hudTime.textContent=minutesToLabel(p.minutes);
+    }
+
+    svg.addEventListener('mouseenter',(e)=>{
+      if(!tracking) return;
+      cursorDot.setAttribute('opacity','1');
+      vLine.setAttribute('opacity','1');
+      hLine.setAttribute('opacity','1');
+      updateCursor(e.clientX);
+    });
+    svg.addEventListener('mousemove',(e)=>{ if(tracking) updateCursor(e.clientX); });
+    svg.addEventListener('mouseleave',()=>{
+      cursorDot.setAttribute('opacity','0');
+      vLine.setAttribute('opacity','0');
+      hLine.setAttribute('opacity','0');
+    });
+
+    // Animate slide-in
+    let t0=null;
+    const duration=1600, startOffset=-540, endOffset=0;
+
+    function tick(ts){
+      if(!t0) t0=ts;
+      const p=Math.min(1,(ts-t0)/duration);
+      const ease=1-Math.pow(1-p,3);
+      const off=startOffset+(endOffset-startOffset)*ease;
+
+      const d=buildPath(off);
+      line.setAttribute('d',d);
+      glow.setAttribute('d',d);
+
+      const live=pts[Math.round(p*(N-1))];
+      hudPrice.textContent=`$${live.price.toFixed(2)}`;
+      hudTime.textContent=minutesToLabel(live.minutes);
+
+      if(p<1){
+        hint.textContent='Market line moving…';
+        requestAnimationFrame(tick);
+      } else {
+        setPeakDots();
+        positionNodes();
+        showNodes();
+        tracking=true;
+        hint.textContent='Move cursor on chart';
+      }
+    }
+
+    window.addEventListener('resize', positionNodes);
+    requestAnimationFrame(tick);
+  })();
+  </script>
+</body>
+</html>
