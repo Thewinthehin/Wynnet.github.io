@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your Name | Portfolio</title>
+  <link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+  <main class="stage">
+    <div class="stage-inner">
+      <div class="stage-head">
+        <div class="stage-title">
+          <div class="kicker">MARKET → STORY</div>
+          <h1>Your Name</h1>
+          <p>A market-chart intro that unfolds into my portfolio. Click a node to open a page.</p>
+        </div>
+        <div class="hint" id="hint">Loading chart…</div>
+      </div>
+
+      <div class="chart-wrap" id="chartWrap">
+        <svg id="chart" viewBox="0 0 1000 360" preserveAspectRatio="none" aria-label="Stock line animation">
+          <!-- subtle grid -->
+          <g opacity="0.18" stroke="white">
+            <path d="M0 60 H1000" />
+            <path d="M0 120 H1000" />
+            <path d="M0 180 H1000" />
+            <path d="M0 240 H1000" />
+            <path d="M0 300 H1000" />
+            <path d="M125 0 V360" />
+            <path d="M250 0 V360" />
+            <path d="M375 0 V360" />
+            <path d="M500 0 V360" />
+            <path d="M625 0 V360" />
+            <path d="M750 0 V360" />
+            <path d="M875 0 V360" />
+          </g>
+
+          <!-- glow line -->
+          <path id="lineGlow" d="" fill="none" stroke="rgba(122,231,255,0.25)" stroke-width="10" stroke-linecap="round" />
+          <path id="line" d="" fill="none" stroke="rgba(255,255,255,0.78)" stroke-width="3.4" stroke-linecap="round" />
+
+          <!-- marker dots will be injected -->
+          <g id="dots"></g>
+        </svg>
+
+        <!-- Nodes (positioned by JS) -->
+        <div class="node center-node" id="nodeAbout" data-target="about.html">
+          <div class="label"><strong>About Me</strong><span>Center of the story</span></div>
+          <div class="chip"></div>
+        </div>
+
+        <div class="node" id="nodeHobbies" data-target="hobbies.html">
+          <div class="label"><strong>Hobbies</strong><span>What I do for fun</span></div>
+          <div class="chip"></div>
+        </div>
+
+        <div class="node alt" id="nodeExp" data-target="experience.html">
+          <div class="label"><strong>Professional Experience</strong><span>Work + projects</span></div>
+          <div class="chip"></div>
+        </div>
+
+        <div class="node" id="nodeExtra" data-target="extracurriculars.html">
+          <div class="label"><strong>Extracurriculars</strong><span>Leadership + service</span></div>
+          <div class="chip"></div>
+        </div>
+
+        <div class="node alt" id="nodeResume" data-target="resume.html">
+          <div class="label"><strong>Resume</strong><span>PDF + highlights</span></div>
+          <div class="chip"></div>
+        </div>
+
+        <div class="fade-bottom"></div>
+      </div>
+    </div>
+  </main>
+
+<script>
+(function(){
+  const hint = document.getElementById('hint');
+  const wrap = document.getElementById('chartWrap');
+  const line = document.getElementById('line');
+  const glow = document.getElementById('lineGlow');
+  const dots = document.getElementById('dots');
+
+  // 5 "peaks" that become navigation nodes.
+  // (x in viewBox coords 0-1000, y in 0-360 where 0 is top)
+  const peaks = [
+    { key: 'Hobbies',         x: 160, y: 130, nodeId: 'nodeHobbies' },
+    { key: 'Experience',      x: 330, y:  95, nodeId: 'nodeExp' },
+    { key: 'About',           x: 500, y: 115, nodeId: 'nodeAbout' },
+    { key: 'Extracurricular', x: 670, y:  88, nodeId: 'nodeExtra' },
+    { key: 'Resume',          x: 840, y: 120, nodeId: 'nodeResume' }
+  ];
+
+  // Build a nice line path that scrolls across (like live price action),
+  // then "settles" into the peaks above.
+  function buildPath(offsetX){
+    // A hand-crafted line using peaks + some in-between wiggles.
+    const pts = [];
+    const baseY = 230;
+
+    // left lead-in
+    pts.push({x: -140 + offsetX, y: baseY + 10});
+    pts.push({x:  30 + offsetX, y: baseY - 25});
+
+    // segment through peaks with wiggles
+    const wiggles = [
+      {x: 100 + offsetX, y: baseY - 55},
+      {x: 160 + offsetX, y: peaks[0].y},
+      {x: 220 + offsetX, y: baseY - 20},
+      {x: 270 + offsetX, y: baseY - 70},
+      {x: 330 + offsetX, y: peaks[1].y},
+
+      {x: 420 + offsetX, y: baseY - 10},
+      {x: 500 + offsetX, y: peaks[2].y},
+
+      {x: 580 + offsetX, y: baseY - 85},
+      {x: 670 + offsetX, y: peaks[3].y},
+
+      {x: 740 + offsetX, y: baseY - 25},
+      {x: 840 + offsetX, y: peaks[4].y},
+      {x: 940 + offsetX, y: baseY - 35},
+      {x: 1120 + offsetX, y: baseY - 5}
+    ];
+
+    pts.push(...wiggles);
+
+    // Convert to smooth-ish SVG path (quadratic through points)
+    let d = `M ${pts[0].x} ${pts[0].y}`;
+    for(let i=1; i<pts.length; i++){
+      const prev = pts[i-1];
+      const cur = pts[i];
+      const cx = (prev.x + cur.x)/2;
+      const cy = (prev.y + cur.y)/2;
+      d += ` Q ${prev.x} ${prev.y} ${cx} ${cy}`;
+    }
+    // end at last
+    const last = pts[pts.length-1];
+    d += ` T ${last.x} ${last.y}`;
+    return d;
+  }
+
+  function setDots(){
+    // place small dots at the 5 peaks (for “locking” feeling)
+    dots.innerHTML = '';
+    for(const p of peaks){
+      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx', p.x);
+      c.setAttribute('cy', p.y);
+      c.setAttribute('r', 5.5);
+      c.setAttribute('fill', 'rgba(255,255,255,0.85)');
+      c.setAttribute('opacity', '0');
+      c.style.transition = 'opacity 500ms ease';
+      dots.appendChild(c);
+    }
+  }
+
+  function getWrapRect(){ return wrap.getBoundingClientRect(); }
+
+  function viewBoxToPixels(x, y){
+    // wrap is rendered size; map viewBox coords to pixels inside wrap
+    const r = getWrapRect();
+    const px = (x/1000) * r.width;
+    const py = (y/360) * r.height;
+    return { px, py };
+  }
+
+  function positionNodesOnPeaks(){
+    for(const p of peaks){
+      const node = document.getElementById(p.nodeId);
+      const {px, py} = viewBoxToPixels(p.x, p.y);
+      node.style.left = px + 'px';
+      node.style.top  = py + 'px';
+    }
+  }
+
+  function showNodes(){
+    hint.textContent = 'Click a node';
+    // fade in dots
+    [...dots.children].forEach((c, i) => setTimeout(()=> c.style.opacity = '1', 150 + i*110));
+
+    // show nodes slightly after dots
+    for(const p of peaks){
+      const node = document.getElementById(p.nodeId);
+      setTimeout(()=> node.classList.add('show'), 420);
+    }
+  }
+
+  // click handlers
+  function wireClicks(){
+    document.querySelectorAll('.node').forEach(n=>{
+      n.addEventListener('click', ()=>{
+        const target = n.getAttribute('data-target');
+        if(target) window.location.href = target;
+      });
+    });
+  }
+
+  // Animate the chart sliding in:
+  // We do it by shifting an offset until it feels like it's "moving"
+  // then stop and lock to the final shape.
+  let t0 = null;
+  const duration = 1400; // ms
+  const startOffset = -260;
+  const endOffset = 0;
+
+  function tick(ts){
+    if(!t0) t0 = ts;
+    const t = ts - t0;
+    const p = Math.min(1, t / duration);
+    const ease = 1 - Math.pow(1 - p, 3); // easeOutCubic
+    const off = startOffset + (endOffset - startOffset) * ease;
+
+    const d = buildPath(off);
+    line.setAttribute('d', d);
+    glow.setAttribute('d', d);
+
+    if(p < 1){
+      requestAnimationFrame(tick);
+    } else {
+      // lock final, then reveal nodes
+      setDots();
+      positionNodesOnPeaks();
+      showNodes();
+    }
+  }
+
+  // On resize, re-place nodes
+  window.addEventListener('resize', ()=>{
+    positionNodesOnPeaks();
+  });
+
+  hint.textContent = 'Market chart loading…';
+  wireClicks();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
