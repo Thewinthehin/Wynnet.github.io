@@ -1,202 +1,331 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Your Name | Portfolio</title>
-  <link rel="stylesheet" href="assets/site.css" />
-</head>
-<body>
-  <!-- grid background -->
-  <div class="grid-bg" aria-hidden="true"></div>
+:root{
+  --bg: #070A12;
+  --panel: rgba(255,255,255,0.06);
+  --panel2: rgba(255,255,255,0.09);
+  --text: rgba(255,255,255,0.92);
+  --muted: rgba(255,255,255,0.70);
+  --line: rgba(255,255,255,0.75);
+  --accent: #7AE7FF;
+  --accent2: #B0FF8A;
+  --ring: rgba(255,255,255,0.18);
+  --shadow: 0 20px 60px rgba(0,0,0,0.55);
+  --radius: 18px;
+}
 
-  <main class="stage">
-    <div class="stage-inner">
-      <div class="stage-head">
-        <div class="stage-title">
-          <div class="kicker">MARKET → PORTFOLIO</div>
-          <h1>Your Name</h1>
-          <p>Start with a moving chart. Then it “locks” into peaks that become the sections of my portfolio.</p>
-        </div>
-        <div class="hint" id="hint">Loading chart…</div>
-      </div>
+*{ box-sizing: border-box; }
+html, body{ height: 100%; }
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+}
 
-      <div class="chart-wrap" id="chartWrap">
-        <svg id="chart" viewBox="0 0 1000 360" preserveAspectRatio="none" aria-label="Stock line animation">
-          <!-- grid inside chart area (optional: keep it subtle) -->
-          <g opacity="0.18" stroke="white">
-            <path d="M0 60 H1000" /><path d="M0 120 H1000" /><path d="M0 180 H1000" />
-            <path d="M0 240 H1000" /><path d="M0 300 H1000" />
-            <path d="M125 0 V360" /><path d="M250 0 V360" /><path d="M375 0 V360" />
-            <path d="M500 0 V360" /><path d="M625 0 V360" /><path d="M750 0 V360" />
-            <path d="M875 0 V360" />
-          </g>
+a{ color: var(--text); text-decoration: none; }
+a:hover{ text-decoration: underline; }
 
-          <path id="lineGlow" d="" fill="none" stroke="rgba(122,231,255,0.22)" stroke-width="10" stroke-linecap="round" />
-          <path id="line" d="" fill="none" stroke="rgba(255,255,255,0.80)" stroke-width="3.4" stroke-linecap="round" />
+.container{
+  width: min(1100px, calc(100% - 48px));
+  margin: 0 auto;
+}
 
-          <g id="dots"></g>
-        </svg>
+/* --- Global grid background (use <div class="grid-bg"></div> after <body>) --- */
+.grid-bg{
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.55;
+  background:
+    linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at 50% 40%, black 0%, black 45%, transparent 75%);
+}
 
-        <!-- Nodes -->
-        <div class="node center-node" id="nodeAbout" data-target="about.html">
-          <div class="label"><strong>About Me</strong><span>Center of it all</span></div>
-          <div class="chip"></div>
-        </div>
+.grid-bg::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(900px 500px at 20% 20%, rgba(122,231,255,0.18), transparent 55%),
+    radial-gradient(800px 520px at 80% 28%, rgba(176,255,138,0.12), transparent 60%),
+    radial-gradient(900px 700px at 50% 88%, rgba(255,255,255,0.06), transparent 65%);
+  opacity: 0.9;
+}
 
-        <div class="node" id="nodeHobbies" data-target="hobbies.html">
-          <div class="label"><strong>Hobbies</strong><span>What I do off-hours</span></div>
-          <div class="chip"></div>
-        </div>
+/* --------- Shared components --------- */
+.topbar{
+  position: sticky;
+  top: 0;
+  backdrop-filter: blur(10px);
+  background: linear-gradient(to bottom, rgba(7,10,18,0.78), rgba(7,10,18,0.35));
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+  z-index: 20;
+}
 
-        <div class="node alt" id="nodeExp" data-target="experience.html">
-          <div class="label"><strong>Professional Experience</strong><span>Work + projects</span></div>
-          <div class="chip"></div>
-        </div>
+.topbar-inner{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  padding: 14px 0;
+  gap: 16px;
+}
 
-        <div class="node" id="nodeExtra" data-target="extracurriculars.html">
-          <div class="label"><strong>Extracurriculars</strong><span>Leadership + service</span></div>
-          <div class="chip"></div>
-        </div>
+.brand{
+  display:flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.brand strong{ font-size: 15px; letter-spacing: 0.2px; }
+.brand span{ font-size: 12px; color: var(--muted); }
 
-        <div class="node alt" id="nodeResume" data-target="resume.html">
-          <div class="label"><strong>Resume</strong><span>PDF + highlights</span></div>
-          <div class="chip"></div>
-        </div>
-      </div>
-    </div>
-  </main>
+.nav{
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content:flex-end;
+}
+.nav a{
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+}
+.nav a:hover{ background: rgba(255,255,255,0.08); }
 
-<script>
-(function(){
-  const hint = document.getElementById('hint');
-  const wrap = document.getElementById('chartWrap');
-  const line = document.getElementById('line');
-  const glow = document.getElementById('lineGlow');
-  const dots = document.getElementById('dots');
+.hero{
+  padding: 44px 0 22px;
+  position: relative;
+  z-index: 1;
+}
+.hero h1{
+  margin:0 0 10px;
+  font-size: clamp(30px, 4vw, 46px);
+  letter-spacing: -0.6px;
+}
+.hero p{
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  max-width: 72ch;
+}
 
-  const peaks = [
-    { x: 160, y: 130, nodeId: 'nodeHobbies' },
-    { x: 330, y:  95, nodeId: 'nodeExp' },
-    { x: 500, y: 115, nodeId: 'nodeAbout' },
-    { x: 670, y:  88, nodeId: 'nodeExtra' },
-    { x: 840, y: 120, nodeId: 'nodeResume' }
-  ];
+.grid{
+  display:grid;
+  grid-template-columns: 1.3fr 0.7fr;
+  gap: 18px;
+  margin: 26px 0 60px;
+  position: relative;
+  z-index: 1;
+}
+@media (max-width: 920px){
+  .grid{ grid-template-columns: 1fr; }
+}
 
-  function buildPath(offsetX){
-    const pts = [];
-    const baseY = 230;
+.card{
+  background: var(--panel);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+.card h2{
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+.card p, .card li{
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.card ul{ margin: 10px 0 0; padding-left: 18px; }
 
-    pts.push({x: -140 + offsetX, y: baseY + 10});
-    pts.push({x:  30 + offsetX, y: baseY - 25});
+.pills{ display:flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;}
+.pill{
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.86);
+}
 
-    const wiggles = [
-      {x: 100 + offsetX, y: baseY - 55},
-      {x: 160 + offsetX, y: peaks[0].y},
-      {x: 220 + offsetX, y: baseY - 20},
-      {x: 270 + offsetX, y: baseY - 70},
-      {x: 330 + offsetX, y: peaks[1].y},
+.footer{
+  padding: 30px 0 50px;
+  color: rgba(255,255,255,0.55);
+  font-size: 12px;
+  position: relative;
+  z-index: 1;
+}
 
-      {x: 420 + offsetX, y: baseY - 10},
-      {x: 500 + offsetX, y: peaks[2].y},
+/* --- Photos inside cards --- */
+.photo{
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.04);
+  overflow: hidden;
+}
+.photo img{
+  width:100%;
+  height:auto;
+  display:block;
+}
+.caption{
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.65);
+}
 
-      {x: 580 + offsetX, y: baseY - 85},
-      {x: 670 + offsetX, y: peaks[3].y},
+/* ---------- FULLSCREEN INDEX ---------- */
+.stage{
+  position: relative;
+  height: 100vh;
+  width: 100%;
+  display:block;
+  padding: 0;
+  z-index: 1; /* above grid-bg */
+}
 
-      {x: 740 + offsetX, y: baseY - 25},
-      {x: 840 + offsetX, y: peaks[4].y},
-      {x: 940 + offsetX, y: baseY - 35},
-      {x: 1120 + offsetX, y: baseY - 5}
-    ];
-    pts.push(...wiggles);
+.stage-inner{
+  position: relative;
+  height: 100%;
+  width: 100%;
+  padding: 26px;
+}
 
-    let d = `M ${pts[0].x} ${pts[0].y}`;
-    for(let i=1; i<pts.length; i++){
-      const prev = pts[i-1];
-      const cur = pts[i];
-      const cx = (prev.x + cur.x)/2;
-      const cy = (prev.y + cur.y)/2;
-      d += ` Q ${prev.x} ${prev.y} ${cx} ${cy}`;
-    }
-    const last = pts[pts.length-1];
-    d += ` T ${last.x} ${last.y}`;
-    return d;
-  }
+.stage-head{
+  position: absolute;
+  left: 26px;
+  top: 22px;
+  right: 26px;
+  display:flex;
+  align-items:flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  z-index: 5;
+}
 
-  function setDots(){
-    dots.innerHTML = '';
-    for(const p of peaks){
-      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
-      c.setAttribute('cx', p.x);
-      c.setAttribute('cy', p.y);
-      c.setAttribute('r', 5.5);
-      c.setAttribute('fill', 'rgba(255,255,255,0.85)');
-      c.setAttribute('opacity', '0');
-      c.style.transition = 'opacity 500ms ease';
-      dots.appendChild(c);
-    }
-  }
+.stage-title{
+  display:flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0,0,0,0.24);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px;
+  padding: 14px 14px;
+  backdrop-filter: blur(10px);
+  max-width: 720px;
+}
 
-  function viewBoxToPixels(x, y){
-    const r = wrap.getBoundingClientRect();
-    return { px: (x/1000)*r.width, py: (y/360)*r.height };
-  }
+.stage-title .kicker{
+  font-size: 12px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+}
 
-  function positionNodes(){
-    for(const p of peaks){
-      const node = document.getElementById(p.nodeId);
-      const {px, py} = viewBoxToPixels(p.x, p.y);
-      node.style.left = px + 'px';
-      node.style.top  = py + 'px';
-    }
-  }
+.stage-title h1{
+  margin:0;
+  font-size: clamp(26px, 3.2vw, 40px);
+  letter-spacing: -0.4px;
+}
 
-  function showNodes(){
-    hint.textContent = 'Click a node';
-    [...dots.children].forEach((c, i) => setTimeout(()=> c.style.opacity='1', 140 + i*110));
-    for(const p of peaks){
-      const node = document.getElementById(p.nodeId);
-      setTimeout(()=> node.classList.add('show'), 420);
-    }
-  }
+.stage-title p{
+  margin:0;
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 70ch;
+}
 
-  document.querySelectorAll('.node').forEach(n=>{
-    n.addEventListener('click', ()=>{
-      const target = n.getAttribute('data-target');
-      if(target) window.location.href = target;
-    });
-  });
+.hint{
+  font-size: 12px;
+  color: rgba(255,255,255,0.55);
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  height: fit-content;
+}
 
-  let t0=null;
-  const duration=1400;
-  const startOffset=-260;
-  const endOffset=0;
+.chart-wrap{
+  position: absolute;
+  inset: 0;
+  overflow:hidden;
+  background: rgba(0,0,0,0.18);
+}
 
-  function tick(ts){
-    if(!t0) t0 = ts;
-    const t = ts - t0;
-    const p = Math.min(1, t/duration);
-    const ease = 1 - Math.pow(1 - p, 3);
-    const off = startOffset + (endOffset-startOffset)*ease;
+svg#chart{
+  position:absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
 
-    const d = buildPath(off);
-    line.setAttribute('d', d);
-    glow.setAttribute('d', d);
+/* Nodes */
+.node{
+  position:absolute;
+  transform: translate(-50%, -50%) scale(0.92);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 420ms ease, opacity 420ms ease, filter 420ms ease;
+  border-radius: 999px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: 0 14px 40px rgba(0,0,0,0.55);
+  backdrop-filter: blur(10px);
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  min-width: 170px;
+  justify-content: space-between;
+  z-index: 6;
+}
 
-    if(p < 1){
-      requestAnimationFrame(tick);
-    } else {
-      setDots();
-      positionNodes();
-      showNodes();
-    }
-  }
+.node .label{
+  display:flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.node .label strong{
+  font-size: 13px;
+  letter-spacing: 0.2px;
+}
+.node .label span{
+  font-size: 11px;
+  color: rgba(255,255,255,0.65);
+}
 
-  window.addEventListener('resize', positionNodes);
+.node .chip{
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 6px rgba(122,231,255,0.10);
+}
 
-  hint.textContent = 'Market chart loading…';
-  requestAnimationFrame(tick);
-})();
-</script>
-</body>
-</html>
+.node.alt .chip{
+  background: var(--accent2);
+  box-shadow: 0 0 0 6px rgba(176,255,138,0.10);
+}
+
+.node.show{
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+.node:hover{
+  filter: brightness(1.12);
+  transform: translate(-50%, -50%) scale(1.04);
+  cursor:pointer;
+}
+
+.center-node{
+  min-width: 220px;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.22);
+}
