@@ -14,6 +14,7 @@
 
 *{ box-sizing: border-box; }
 html, body{ height: 100%; }
+
 body{
   margin:0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -30,7 +31,10 @@ a:hover{ text-decoration: underline; }
   margin: 0 auto;
 }
 
-/* --- Global grid background (use <div class="grid-bg"></div> after <body>) --- */
+/* ============================
+   GLOBAL GRID BACKGROUND
+   Add <div class="grid-bg"></div> right after <body> on every page
+   ============================ */
 .grid-bg{
   position: fixed;
   inset: 0;
@@ -55,7 +59,9 @@ a:hover{ text-decoration: underline; }
   opacity: 0.9;
 }
 
-/* --------- Shared components --------- */
+/* ============================
+   SHARED COMPONENTS (INNER PAGES)
+   ============================ */
 .topbar{
   position: sticky;
   top: 0;
@@ -161,7 +167,7 @@ a:hover{ text-decoration: underline; }
   z-index: 1;
 }
 
-/* --- Photos inside cards --- */
+/* Photos inside cards */
 .photo{
   width: 100%;
   border-radius: 16px;
@@ -180,92 +186,9 @@ a:hover{ text-decoration: underline; }
   color: rgba(255,255,255,0.65);
 }
 
-/* ---------- FULLSCREEN INDEX ---------- */
-.stage{
-  position: relative;
-  height: 100vh;
-  width: 100%;
-  display:block;
-  padding: 0;
-  z-index: 1; /* above grid-bg */
-}
-
-.stage-inner{
-  position: relative;
-  height: 100%;
-  width: 100%;
-  padding: 26px;
-}
-
-.stage-head{
-  position: absolute;
-  left: 26px;
-  top: 22px;
-  right: 26px;
-  display:flex;
-  align-items:flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  z-index: 5;
-}
-
-.stage-title{
-  display:flex;
-  flex-direction: column;
-  gap: 6px;
-  background: rgba(0,0,0,0.24);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 18px;
-  padding: 14px 14px;
-  backdrop-filter: blur(10px);
-  max-width: 720px;
-}
-
-.stage-title .kicker{
-  font-size: 12px;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.55);
-}
-
-.stage-title h1{
-  margin:0;
-  font-size: clamp(26px, 3.2vw, 40px);
-  letter-spacing: -0.4px;
-}
-
-.stage-title p{
-  margin:0;
-  color: var(--muted);
-  font-size: 14px;
-  max-width: 70ch;
-}
-
-.hint{
-  font-size: 12px;
-  color: rgba(255,255,255,0.55);
-  border: 1px solid rgba(255,255,255,0.12);
-  padding: 8px 10px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.04);
-  height: fit-content;
-}
-
-.chart-wrap{
-  position: absolute;
-  inset: 0;
-  overflow:hidden;
-  background: rgba(0,0,0,0.18);
-}
-
-svg#chart{
-  position:absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-/* Nodes */
+/* ============================
+   INDEX + NODES (shared)
+   ============================ */
 .node{
   position:absolute;
   transform: translate(-50%, -50%) scale(0.92);
@@ -283,7 +206,7 @@ svg#chart{
   gap: 10px;
   min-width: 170px;
   justify-content: space-between;
-  z-index: 6;
+  z-index: 10; /* above chart */
 }
 
 .node .label{
@@ -328,4 +251,68 @@ svg#chart{
   min-width: 220px;
   background: rgba(255,255,255,0.10);
   border: 1px solid rgba(255,255,255,0.22);
+}
+
+/* ============================
+   FULLSCREEN INDEX (MAIN PAGE)
+   This makes the chart fill the entire screen.
+   Your index.html should use:
+   <main class="stage"><div class="stage-inner"><div class="chart-wrap"> ... </div></div></main>
+   ============================ */
+
+/* Allow index to fill screen. (If this breaks inner pages, add body class "home" and scope these rules.) */
+body{
+  overflow-x: hidden;
+}
+
+/* Fullscreen container */
+.stage{
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  width: 100vw;
+  padding: 0;
+  margin: 0;
+  z-index: 1; /* above grid */
+}
+
+.stage-inner{
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* If you still have a header box on the index, hide it */
+.stage-head{
+  display: none !important;
+}
+
+/* Full-bleed chart area */
+.chart-wrap{
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+svg#chart{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Remove any leftover overlays */
+.fade-bottom{
+  display: none !important;
 }
