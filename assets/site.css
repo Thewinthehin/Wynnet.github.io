@@ -316,3 +316,11 @@ svg#chart{
 .fade-bottom{
   display: none !important;
 }
+/* --- Chart interaction polish (optional) --- */
+#chart { cursor: crosshair; }
+
+/* Don't let the SVG cursor-dot block clicks on the nodes */
+#chart g, #chart circle { pointer-events: none; }
+
+/* If you kept the corner hint/HUD, these ensure they sit above everything */
+.corner-hint { z-index: 6; }
